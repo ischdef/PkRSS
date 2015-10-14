@@ -25,7 +25,7 @@ public class Enclosure implements Parcelable {
             else if(att.equalsIgnoreCase("length"))
                 this.setLength(val);
 
-            else if(att.equalsIgnoreCase("type"))
+            else if(att.equalsIgnoreCase("type") || att.equalsIgnoreCase("mime-type"))
                 this.setMimeType(val);
         }
     }

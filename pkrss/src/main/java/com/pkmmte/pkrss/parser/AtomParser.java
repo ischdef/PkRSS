@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.text.Html;
 import android.util.Log;
 import com.pkmmte.pkrss.Article;
+import com.pkmmte.pkrss.Channel;
 import com.pkmmte.pkrss.PkRSS;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -52,7 +53,14 @@ public class AtomParser extends Parser {
 	}
 
 	@Override
-	public List<Article> parse(String rssStream) {
+	public Channel parseChannel(String rssStream) {
+		Channel newChannel = new Channel();
+
+		return newChannel;
+	}
+
+	@Override
+	public List<Article> parseArticles(String rssStream) {
 		// Clear previous list and start timing execution time
 		articleList.clear();
 		long time = System.currentTimeMillis();

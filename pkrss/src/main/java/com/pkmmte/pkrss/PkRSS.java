@@ -174,12 +174,15 @@ public class PkRSS {
 		// Get response from this request
 		String response = request.downloader == null ? downloader.execute(request) : request.downloader.execute(request);
 
+		// Parse channel info from response
+		Channel newChannel = request.parser == null ? parser.parseChannel(response) : request.parser.parseChannel(response);
+
 		// Parse articles from response and inset into global list
-		List<Article> newArticles = request.parser == null ? parser.parse(response) : request.parser.parse(response);
+		List<Article> newArticles = request.parser == null ? parser.parseArticles(response) : request.parser.parseArticles(response);
 		insert(safeUrl, newArticles);
 
 		// Notify callback
-		handler.onLoaded(safe, request.callback.get(), newArticles);
+		handler.onLoaded(safe, request.callback.get(), newArticles, newChannel);
 	}
 
 	/**

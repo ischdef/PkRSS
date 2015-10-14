@@ -2,6 +2,7 @@ package com.pkmmte.pkrss.parser;
 
 import android.util.Log;
 import com.pkmmte.pkrss.Article;
+import com.pkmmte.pkrss.Channel;
 import com.pkmmte.pkrss.PkRSS;
 import java.util.List;
 
@@ -18,11 +19,18 @@ public abstract class Parser {
 	PkRSS singleton;
 
 	/**
+	 * Parses {@link Channel} objects out of the passed String response.
+	 * @param rssStream String response to parse items from.
+	 * @return An {@link Channel} containing newly parsed items.
+	 */
+	public abstract Channel parseChannel(String rssStream);
+
+	/**
 	 * Parses {@link Article} objects out of the passed String response.
 	 * @param rssStream String response to parse items from.
 	 * @return An {@link Article} {@link List} containing newly parsed items.
 	 */
-	public abstract List<Article> parse(String rssStream);
+	public abstract List<Article> parseArticles(String rssStream);
 
 	/**
 	 * Attaches a {@link PkRSS} singleton instance to this Parser for logging purposes.
