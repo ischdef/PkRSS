@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.text.Html;
 import android.util.Log;
 import com.pkmmte.pkrss.Article;
+import com.pkmmte.pkrss.Channel;
 import com.pkmmte.pkrss.Enclosure;
 import com.pkmmte.pkrss.PkRSS;
 import java.io.ByteArrayInputStream;
@@ -54,7 +55,89 @@ public class Rss2Parser extends Parser {
 	}
 
 	@Override
-	public List<Article> parse(String rssStream) {
+	public Channel parseChannel(String rssStream) {
+		Channel newChannel = new Channel();
+		long time = System.currentTimeMillis();
+
+		try {
+			// Get InputStream from String and set it to our XmlPullParser
+			InputStream input = new ByteArrayInputStream(rssStream.getBytes());
+
+			// Input null to enable
+			xmlParser.setInput(input, null);
+
+			newChannel.setEncoding(xmlParser.getInputEncoding());
+
+			// Reuse event holder
+			int eventType = xmlParser.getEventType();
+
+			// Loop through the entire xml feed
+            boolean insideArticle = false;
+            boolean insideChannelImage = true;
+			while (eventType != XmlPullParser.END_DOCUMENT) {
+				final String tagName = xmlParser.getName();
+                final String tagValue = xmlParser.getText();
+				switch (eventType) {
+					case XmlPullParser.START_TAG:
+						if (tagName.equalsIgnoreCase("item")) {
+                            insideArticle = true;
+                        }
+                        // only check for channel information tags outside of item tags
+						else if (!insideArticle) {
+                            if (!insideChannelImage) {
+                                if (tagName.equalsIgnoreCase("title")) {
+                                    newChannel.setTitle(tagValue);
+                                } else if (tagName.equalsIgnoreCase("description")) {
+                                    newChannel.setDescription(tagValue);
+                                } else if (tagName.equalsIgnoreCase("language")) {
+                                    newChannel.setLanguage(tagValue);
+                                } else if (tagName.equalsIgnoreCase("link")) {
+                                    if (tagValue != null) {
+                                        newChannel.setLink(Uri.parse(tagValue));
+                                    }
+                                } else if (tagName.equalsIgnoreCase("image")) {
+                                    insideChannelImage = true;
+                                }
+                            }
+                            // only check for channel image inside image tag
+                            else {
+                                if (tagName.equalsIgnoreCase("url")) {
+                                    if (tagValue != null) {
+                                        newChannel.setImage(Uri.parse(xmlParser.getText()));
+                                    }
+                                }
+                            }
+                        }
+						break;
+					case XmlPullParser.END_TAG:
+						if (tagName.equalsIgnoreCase("item")) {
+                            insideArticle = false;
+						} else if (tagName.equalsIgnoreCase("image")) {
+                            insideChannelImage = false;
+                        }
+						break;
+					default:
+						break;
+				}
+				eventType = xmlParser.next();
+			}
+		}
+		catch (IOException e) {
+			// Uh oh
+			e.printStackTrace();
+		}
+		catch (XmlPullParserException e) {
+			// Oh noes
+			e.printStackTrace();
+		}
+
+		// Output execution time and return list of newly parsed articles
+		log(TAG, "Channel parsing took " + (System.currentTimeMillis() - time) + "ms");
+		return newChannel;
+	}
+
+	@Override
+	public List<Article> parseArticles(String rssStream) {
 		// Clear previous list and start timing execution time
 		articleList.clear();
 		long time = System.currentTimeMillis();
@@ -115,7 +198,7 @@ public class Rss2Parser extends Parser {
 		}
 
 		// Output execution time and return list of newly parsed articles
-		log(TAG, "Parsing took " + (System.currentTimeMillis() - time) + "ms");
+		log(TAG, "Aticles parsing took " + (System.currentTimeMillis() - time) + "ms");
 		return articleList;
 	}
 
