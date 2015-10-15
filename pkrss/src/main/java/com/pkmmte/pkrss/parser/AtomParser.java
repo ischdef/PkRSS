@@ -59,9 +59,8 @@ public class AtomParser extends Parser {
 		parsedFeed.clear();
 		long time = System.currentTimeMillis();
 
-		// Get channel shortcut and set text encoding
+		// Get channel shortcut
 		Channel channel = parsedFeed.getChannel();
-		channel.setEncoding(xmlParser.getInputEncoding());
 
 		try {
 			// Get InputStream from String and set it to our XmlPullParser
@@ -112,6 +111,9 @@ public class AtomParser extends Parser {
 			// Oh noes
 			e.printStackTrace();
 		}
+
+		// Encoding only valid after at least one xmlParser.next() was called
+		channel.setEncoding(xmlParser.getInputEncoding());
 
 		// Output execution time and return list of newly parsed articles
 		log(TAG, "Parsing took " + (System.currentTimeMillis() - time) + "ms");
