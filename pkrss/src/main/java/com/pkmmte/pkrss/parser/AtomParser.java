@@ -5,6 +5,7 @@ import android.text.Html;
 import android.util.Log;
 import com.pkmmte.pkrss.Article;
 import com.pkmmte.pkrss.Channel;
+import com.pkmmte.pkrss.ParsedFeed;
 import com.pkmmte.pkrss.PkRSS;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -28,7 +29,7 @@ import org.xmlpull.v1.XmlPullParserFactory;
  * or modify an existing one.
  */
 public class AtomParser extends Parser {
-	private final List<Article> articleList = new ArrayList<Article>();
+	private final ParsedFeed parsedFeed = new ParsedFeed();
 	private final DateFormat dateFormat;
 	private final Pattern pattern;
 	private final XmlPullParser xmlParser;
@@ -53,17 +54,14 @@ public class AtomParser extends Parser {
 	}
 
 	@Override
-	public Channel parseChannel(String rssStream) {
-		Channel newChannel = new Channel();
-
-		return newChannel;
-	}
-
-	@Override
-	public List<Article> parseArticles(String rssStream) {
-		// Clear previous list and start timing execution time
-		articleList.clear();
+	public ParsedFeed parse(String rssStream) {
+		// Clear previous feed and start timing execution time
+		parsedFeed.clear();
 		long time = System.currentTimeMillis();
+
+		// Get channel shortcut and set text encoding
+		Channel channel = parsedFeed.getChannel();
+		channel.setEncoding(xmlParser.getInputEncoding());
 
 		try {
 			// Get InputStream from String and set it to our XmlPullParser
@@ -97,7 +95,7 @@ public class AtomParser extends Parser {
 							log(TAG, article.toShortString(), Log.INFO);
 
 							// Add article object to list
-							articleList.add(article);
+							parsedFeed.addArticle(article);
 						}
 						break;
 					default:
@@ -117,7 +115,7 @@ public class AtomParser extends Parser {
 
 		// Output execution time and return list of newly parsed articles
 		log(TAG, "Parsing took " + (System.currentTimeMillis() - time) + "ms");
-		return articleList;
+		return parsedFeed;
 	}
 
 	/**

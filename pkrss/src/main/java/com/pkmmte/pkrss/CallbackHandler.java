@@ -27,9 +27,9 @@ class CallbackHandler {
 		invokeCallback(method, callback, safe);
 	}
 
-	protected void onLoaded(final boolean safe, final Callback callback, final Channel newChannel, final List<Article> newArticles) {
-		Method method = getDeclaredMethod(clazz, "OnLoaded", Channel.class, List.class);
-		invokeCallback(method, callback, safe, newChannel, newArticles);
+	protected void onLoaded(final boolean safe, final Callback callback, final ParsedFeed feed) {
+		Method method = getDeclaredMethod(clazz, "OnLoaded", ParsedFeed.class);
+		invokeCallback(method, callback, safe, feed);
 	}
 
 	protected void onLoadFailed(boolean safe, Callback callback) {

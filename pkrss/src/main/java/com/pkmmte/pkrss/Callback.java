@@ -4,6 +4,6 @@ import java.util.List;
 
 public interface Callback {
 	public void OnPreLoad();
-	public void OnLoaded(Channel newChannel, List<Article> newArticles);
+	public void OnLoaded(ParsedFeed feed);
 	public void OnLoadFailed();
 }
