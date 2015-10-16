@@ -86,7 +86,12 @@ public class Rss2Parser extends Parser {
 							break;
 						}
 						else if (insideChannel) {
-							if (insideChannelImage) {
+							if (tagName.equalsIgnoreCase("item")) {
+								insideArticle = true;
+								article = new Article();
+							} else if (tagName.equalsIgnoreCase("image")) {
+								insideChannelImage = true;
+							} else if (insideChannelImage) {
 								if (tagName.equalsIgnoreCase("url")) {
 									// get next element which should be the text element
 									if (xmlParser.next() == XmlPullParser.TEXT) {
@@ -110,10 +115,7 @@ public class Rss2Parser extends Parser {
 								if (xmlParser.next() == XmlPullParser.TEXT) {
 									final String tagValue = xmlParser.getText();
 									if (tagValue != null) {
-										if (tagName.equalsIgnoreCase("item")) {
-											insideArticle = true;
-											article = new Article();
-										} else if (tagName.equalsIgnoreCase("title")) {
+										if (tagName.equalsIgnoreCase("title")) {
 											channel.setTitle(tagValue);
 										} else if (tagName.equalsIgnoreCase("description")) {
 											channel.setDescription(tagValue);
@@ -121,8 +123,6 @@ public class Rss2Parser extends Parser {
 											channel.setLanguage(tagValue);
 										} else if (tagName.equalsIgnoreCase("link")) {
 											channel.setLink(Uri.parse(tagValue));
-										} else if (tagName.equalsIgnoreCase("image")) {
-											insideChannelImage = true;
 										}
 									}
 								}

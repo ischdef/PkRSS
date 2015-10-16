@@ -70,19 +70,40 @@ public class AtomParser extends Parser {
 			// Reuse Article object and event holder
 			Article article = new Article();
 			int eventType = xmlParser.getEventType();
+			boolean insideArticle = false;
 
 			// Loop through the entire xml feed
 			while (eventType != XmlPullParser.END_DOCUMENT) {
-				String tagname = xmlParser.getName();
+				String tagName = xmlParser.getName();
 				switch (eventType) {
 					case XmlPullParser.START_TAG:
-						if (tagname.equalsIgnoreCase("entry")) // Start a new instance
+						if (tagName.equalsIgnoreCase("feed")) {
+							channel.setLanguage(xmlParser.getAttributeValue(null, "xml:lang"));
+						} else if (tagName.equalsIgnoreCase("entry")) {
+							insideArticle = true;
 							article = new Article();
-						else // Handle this node if not an entry tag
-							handleNode(tagname, article);
+						} else if (insideArticle) {
+							handleNode(tagName, article);
+						} else {
+							// get next element which should be the text element
+							if (xmlParser.next() == XmlPullParser.TEXT) {
+								final String tagValue = xmlParser.getText();
+								if (tagValue != null) {
+									if (tagName.equalsIgnoreCase("title")) {
+										channel.setTitle(tagValue);
+									} else if (tagName.equalsIgnoreCase("subtitle")) {
+										channel.setDescription(tagValue);
+									} else if (tagName.equalsIgnoreCase("logo")) {
+										channel.setImage(Uri.parse(tagValue));
+									}
+								}
+							}
+						}
 						break;
 					case XmlPullParser.END_TAG:
-						if (tagname.equalsIgnoreCase("entry")) {
+						if (tagName.equalsIgnoreCase("entry")) {
+							insideArticle = false;
+
 							// Generate ID
 							article.setId(Math.abs(article.hashCode()));
 
@@ -199,14 +220,29 @@ public class AtomParser extends Parser {
 			XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
 			XmlPullParser xpp = factory.newPullParser();
 
+			// Remove rubbish text before image tag starts
+			encoded = encoded.replaceFirst(".*<img", "<img");
+
+			// Add xml description
+			encoded = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" + "\n" + encoded;
+
 			xpp.setInput(new StringReader(encoded));
 			int eventType = xpp.getEventType();
 			while (eventType != XmlPullParser.END_DOCUMENT) {
 				if (eventType == XmlPullParser.START_TAG && "img".equals(xpp.getName())) {
-					int count = xpp.getAttributeCount();
-					for (int x = 0; x < count; x++) {
-						if (xpp.getAttributeName(x).equalsIgnoreCase("src"))
-							return pattern.matcher(xpp.getAttributeValue(x)).replaceAll("");
+					final String image = xpp.getAttributeValue(null, "src");
+					if (image != null) {
+						// check for minimum image size of 5x5 pixel
+						int height;
+						int width;
+						try {
+							height = Integer.parseInt(xpp.getAttributeValue(null, "height"));
+							width = Integer.parseInt(xpp.getAttributeValue(null, "width"));
+						} catch (NumberFormatException e) {
+							// no size given, assume valid image size
+							return image;
+						}
+						return (height < 5 && width < 5) ? "" : image;
 					}
 				}
 				eventType = xpp.next();
