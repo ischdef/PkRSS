@@ -6,9 +6,11 @@ import android.util.Log;
 import com.pkmmte.pkrss.Request;
 import com.squareup.okhttp.Cache;
 import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.RequestBody;
 import com.squareup.okhttp.Response;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -50,17 +52,11 @@ public class OkHttpDownloader extends Downloader {
 	}
 
 	@Override
-	public String execute(Request request) throws IllegalArgumentException, IOException {
+	public InputStream getStream(Request request) throws IllegalArgumentException, IOException {
 		// Invalid URLs are a big no no
 		if (request.url == null || request.url.isEmpty()) {
 			throw new IllegalArgumentException("Invalid URL!");
 		}
-
-		// Start tracking download time
-		long time = System.currentTimeMillis();
-
-		// Empty response string placeholder
-		String responseStr;
 
 		// Handle cache
 		int maxCacheAge = request.skipCache ? 0 : cacheMaxAge;
@@ -78,20 +74,17 @@ public class OkHttpDownloader extends Downloader {
 			// Execute the built request and log its data
 			log("Making a request to " + requestUrl + (request.skipCache ? " [SKIP-CACHE]" : " [MAX-AGE " + maxCacheAge + "]"));
 			Response response = client.newCall(httpRequest).execute();
-
-			// Was this retrieved from cache?
-			if (response.cacheResponse() != null) log("Response retrieved from cache");
-
-			// Convert response body to a string
-			responseStr = response.body().string();
-			log(TAG, "Request download took " + (System.currentTimeMillis() - time) + "ms", Log.INFO);
+			return response.body().byteStream();
 		} catch (Exception e) {
 			log("Error executing/reading http request!", Log.ERROR);
 			e.printStackTrace();
 			throw new IOException(e.getMessage());
 		}
+	}
 
-		return responseStr;
+	@Override
+	public void closeConnection() {
+		// nothing to do
 	}
 
 	@Override

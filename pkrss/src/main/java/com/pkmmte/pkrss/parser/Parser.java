@@ -5,6 +5,9 @@ import com.pkmmte.pkrss.Article;
 import com.pkmmte.pkrss.Channel;
 import com.pkmmte.pkrss.ParsedFeed;
 import com.pkmmte.pkrss.PkRSS;
+
+import org.xmlpull.v1.XmlPullParser;
+
 import java.util.List;
 
 /**
@@ -21,10 +24,9 @@ public abstract class Parser {
 
 	/**
 	 * Parses {@link Article} objects out of the passed String response.
-	 * @param rssStream String response to parse items from.
 	 * @return An {@link Article} {@link List} containing newly parsed items.
 	 */
-	public abstract ParsedFeed parse(String rssStream);
+	public abstract ParsedFeed parse();
 
 	/**
 	 * Attaches a {@link PkRSS} singleton instance to this Parser for logging purposes.

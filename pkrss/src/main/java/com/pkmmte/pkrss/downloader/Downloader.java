@@ -4,6 +4,7 @@ import android.util.Log;
 import com.pkmmte.pkrss.PkRSS;
 import com.pkmmte.pkrss.Request;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Base Downloader class for Downloader objects.
@@ -26,11 +27,16 @@ public abstract class Downloader {
 	/**
 	 * Executes the specified request and returns the response String.
 	 * @param request PkRSS Request object containing all necessary parameters.
-	 * @return Response String to parse
+	 * @return InputStream of downloaded stream
 	 * @throws IllegalArgumentException
 	 * @throws IOException
 	 */
-	public abstract String execute(Request request) throws IllegalArgumentException, IOException;
+	public abstract InputStream getStream(Request request) throws IllegalArgumentException, IOException;
+
+	/**
+	 * Close connection opened with {@code getStream} after usage of stream is done
+	 */
+	public abstract void closeConnection();
 
 	/**
 	 * Parses a request into a safe URL to be used for caching/tracking purposes.

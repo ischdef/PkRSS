@@ -8,12 +8,21 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.SparseBooleanArray;
+import android.util.Xml;
+
 import com.pkmmte.pkrss.downloader.DefaultDownloader;
 import com.pkmmte.pkrss.downloader.Downloader;
 import com.pkmmte.pkrss.downloader.OkHttpDownloader;
+import com.pkmmte.pkrss.parser.AtomParser;
 import com.pkmmte.pkrss.parser.Parser;
 import com.pkmmte.pkrss.parser.Rss2Parser;
+
+import org.xmlpull.v1.XmlPullParser;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -59,9 +68,6 @@ public class PkRSS {
 	// Our handy client for getting XML feed data
 	private final Downloader downloader;
 
-	// Reusable XML Parser
-	private final Parser parser;
-
 	// List of stored articles
 	private final Map<String, List<Article>> articleMap = new HashMap<String, List<Article>>();
 
@@ -102,13 +108,11 @@ public class PkRSS {
 		PkRSS.singleton = singleton;
 	}
 
-	PkRSS(Context context, CallbackHandler handler, Downloader downloader, Parser parser, boolean loggingEnabled, boolean safe) {
+	PkRSS(Context context, CallbackHandler handler, Downloader downloader, boolean loggingEnabled, boolean safe) {
 		this.mContext = context;
 		this.handler = handler;
 		this.downloader = downloader;
 		this.downloader.attachInstance(this);
-		this.parser = parser;
-		this.parser.attachInstance(this);
 		this.loggingEnabled = loggingEnabled;
 		this.safe = safe;
 		this.mPrefs = context.getSharedPreferences(TAG, Context.MODE_PRIVATE);
@@ -172,14 +176,51 @@ public class PkRSS {
 		pageTracker.put(safeUrl, request.page);
 
 		// Get response from this request
-		String response = request.downloader == null ? downloader.execute(request) : request.downloader.execute(request);
+		InputStream inputStream = request.downloader == null ? downloader.getStream(request) : request.downloader.getStream(request);
 
-		// Parse channel info and articles from response and insert into global list
-		ParsedFeed feed = request.parser == null ? parser.parse(response) : request.parser.parse(response);
-		insert(safeUrl, feed.getArticles());
+		//URL url = new URL(safeUrl);
+		//InputStream inputStream = url.openConnection().getInputStream();
+
+
+		ParsedFeed feed = null;
+		try {
+			XmlPullParser parser = Xml.newPullParser();
+			parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true);
+			parser.setInput(inputStream, null);
+			while (parser.next() != XmlPullParser.END_DOCUMENT) {
+				if (parser.getEventType() == XmlPullParser.START_TAG)
+					switch (parser.getName()) {
+						case "channel":
+							feed = new Rss2Parser(parser).parse();
+							break;
+						case "feed":
+							feed = new AtomParser(parser).parse();
+							break;
+						default:
+							feed = null;
+							break;
+					}
+			}
+		} catch (Exception e) {
+			// TODO log
+		} finally {
+			inputStream.close();
+			if (request.downloader == null) {
+				downloader.closeConnection();
+			} else {
+				request.downloader.closeConnection();
+			}
+		}
 
 		// Notify callback
-		handler.onLoaded(safe, request.callback.get(), feed);
+		if (feed == null) {
+			handler.onLoadFailed(safe, request.callback.get());
+		} else {
+			insert(safeUrl, feed.getArticles());
+			handler.onLoaded(safe, request.callback.get(), feed);
+		}
+
+
 	}
 
 	/**
@@ -527,7 +568,6 @@ public class PkRSS {
 		private final Context context;
 		private CallbackHandler handler;
 		private Downloader downloader;
-		private Parser parser;
 		private boolean loggingEnabled;
 		private boolean safe;
 
@@ -562,15 +602,6 @@ public class PkRSS {
 		}
 
 		/**
-		 * Specifies a custom {@link Parser} Object for which to parse data with. <br />
-		 * <b>Default: </b> {@link Rss2Parser}
-		 */
-		public Builder parser(Parser parser) {
-			this.parser = parser;
-			return this;
-		}
-
-		/**
 		 * Toggle whether debug logging is enabled.
 		 * <b>Default: </b> {@code false}
 		 */
@@ -592,16 +623,13 @@ public class PkRSS {
 		 * Creates a {@link PkRSS} instance.
 		 */
 		public PkRSS build() {
-			if(parser == null)
-				parser = new Rss2Parser();
-
 			if(downloader == null)
 				downloader = Utils.createDefaultDownloader(context);
 
 			if(handler == null)
 				handler = new CallbackHandler();
 
-			return new PkRSS(context, handler, downloader, parser, loggingEnabled, safe);
+			return new PkRSS(context, handler, downloader, loggingEnabled, safe);
 		}
 	}
 }

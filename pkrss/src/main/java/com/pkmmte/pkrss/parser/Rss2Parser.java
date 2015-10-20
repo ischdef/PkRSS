@@ -35,27 +35,16 @@ public class Rss2Parser extends Parser {
 	private final Pattern pattern;
 	private final XmlPullParser xmlParser;
 
-	public Rss2Parser() {
+	public Rss2Parser(XmlPullParser xmlParser) {
 		// Initialize DateFormat object with the default date formatting
-		dateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z", Locale.US);
-		dateFormat.setTimeZone(Calendar.getInstance().getTimeZone());
-		pattern = Pattern.compile("-\\d{1,4}x\\d{1,4}");
-
-		// Initialize XmlPullParser object with a common configuration
-		XmlPullParser parser = null;
-		try {
-			XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-			factory.setNamespaceAware(false);
-			parser = factory.newPullParser();
-		}
-		catch (XmlPullParserException e) {
-			e.printStackTrace();
-		}
-		xmlParser = parser;
+		this.dateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z", Locale.US);
+		this.dateFormat.setTimeZone(Calendar.getInstance().getTimeZone());
+		this.pattern = Pattern.compile("-\\d{1,4}x\\d{1,4}");
+		this.xmlParser = xmlParser;
 	}
 
 	@Override
-	public ParsedFeed parse(String rssStream) {
+	public ParsedFeed parse() {
 		// Clear previous feed and start timing execution time
 		parsedFeed.clear();
 		long time = System.currentTimeMillis();
@@ -63,14 +52,10 @@ public class Rss2Parser extends Parser {
 		// Get channel shortcut and set text encoding
 		Channel channel = parsedFeed.getChannel();
 
+		boolean insideChannel = true;
 		boolean insideArticle = false;
-		boolean insideChannel = false;
 		boolean insideChannelImage = false;
 		try {
-			// Get InputStream from String and set it to our XmlPullParser
-			InputStream input = new ByteArrayInputStream(rssStream.getBytes());
-			xmlParser.setInput(input, null);
-
 			// Reuse Article object and event holder
 			Article article = new Article();
 			int eventType = xmlParser.getEventType();
