@@ -8,16 +8,13 @@ import com.pkmmte.pkrss.Channel;
 import com.pkmmte.pkrss.Enclosure;
 import com.pkmmte.pkrss.ParsedFeed;
 import com.pkmmte.pkrss.PkRSS;
-import java.io.ByteArrayInputStream;
+
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.StringReader;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import org.xmlpull.v1.XmlPullParser;
@@ -31,14 +28,21 @@ import org.xmlpull.v1.XmlPullParserFactory;
  */
 public class Rss2Parser extends Parser {
 	private final ParsedFeed parsedFeed = new ParsedFeed();
-	private final DateFormat dateFormat;
+	private final DateFormat dateFormatIso8601;
+	private final DateFormat dateFormatIso8601Short;
+	private final DateFormat dateFormatUTC;
 	private final Pattern pattern;
 	private final XmlPullParser xmlParser;
 
 	public Rss2Parser(XmlPullParser xmlParser) {
 		// Initialize DateFormat object with the default date formatting
-		this.dateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z", Locale.US);
-		this.dateFormat.setTimeZone(Calendar.getInstance().getTimeZone());
+		this.dateFormatIso8601 = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z", Locale.ENGLISH);
+		this.dateFormatIso8601.setTimeZone(Calendar.getInstance().getTimeZone());
+		this.dateFormatIso8601Short = new SimpleDateFormat("EEE, d MMM yy HH:mm:ss Z", Locale.ENGLISH);
+		this.dateFormatIso8601Short.setTimeZone(Calendar.getInstance().getTimeZone());
+		this.dateFormatUTC = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ENGLISH);
+		this.dateFormatUTC.setTimeZone(Calendar.getInstance().getTimeZone());
+
 		this.pattern = Pattern.compile("-\\d{1,4}x\\d{1,4}");
 		this.xmlParser = xmlParser;
 	}
@@ -192,9 +196,8 @@ public class Rss2Parser extends Parser {
 				article.setNewTag(xmlParser.getText());
 			else if (tag.equalsIgnoreCase("dc:creator"))
 				article.setAuthor(xmlParser.getText());
-			else if (tag.equalsIgnoreCase("pubDate")) {
+			else if ((tag.equalsIgnoreCase("pubDate")) || (tag.equalsIgnoreCase("a10:updated")))
 				article.setDate(getParsedDate(xmlParser.getText()));
-			}
 
 			return true;
 		}
@@ -209,19 +212,36 @@ public class Rss2Parser extends Parser {
 	}
 
 	/**
-	 * Converts a date in the "EEE, d MMM yyyy HH:mm:ss Z" format to a long value.
+	 * Converts a date to a long value.
 	 * @param encodedDate The encoded date which to convert.
 	 * @return A long value for the passed date String or 0 if improperly parsed.
 	 */
 	private long getParsedDate(String encodedDate) {
+		Long returnTime = 0L;
+
+		// First check if ISO8601 format
 		try {
-			return dateFormat.parse(dateFormat.format(dateFormat.parseObject(encodedDate))).getTime();
+			returnTime = dateFormatIso8601.parse(dateFormatIso8601.format(dateFormatIso8601.parseObject(encodedDate))).getTime();
+		} catch (ParseException e) {
+			// check again with YY format
 		}
-		catch (ParseException e) {
-			log(TAG, "Error parsing date " + encodedDate, Log.WARN);
-			e.printStackTrace();
-			return 0;
+
+		// Check if YY instead of YYYY used for representing year
+		if (returnTime <= 0) {
+			try {
+				return dateFormatIso8601.parse(dateFormatIso8601.format(dateFormatIso8601Short.parseObject(encodedDate))).getTime();
+			} catch (ParseException e) {
+				log(TAG, "Error parsing ISO8601 date " + encodedDate, Log.WARN);
+			}
 		}
+
+		// Try parsing as UTC time format if ISO parsing failed
+		try {
+			return dateFormatUTC.parse(dateFormatUTC.format(dateFormatUTC.parseObject(encodedDate))).getTime();
+		} catch (ParseException e) {
+			log(TAG, "Error parsing UTC date" + encodedDate, Log.WARN);
+		}
+		return returnTime;
 	}
 
 	/**
